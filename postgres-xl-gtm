@@ -45,35 +45,35 @@ Resource agent for a GTM in a Postgres-XL cluster. It manages a GTM as an HA res
   </longdesc>
   <shortdesc lang="en">Resource agent for a GTM in a Postgres-XL cluster</shortdesc>
   <parameters>
-    <parameter name="user" unique="0" required="0">
+    <parameter name="user">
       <longdesc lang="en">
 The user who starts GTM.
       </longdesc>
       <shortdesc lang="en">The user who starts GTM</shortdesc>
       <content type="string" default="$OCF_RESKEY_user_default" />
     </parameter>
-    <parameter name="bindir" unique="0" required="0">
+    <parameter name="bindir">
       <longdesc lang="en">
 Path to the directory storing the Postgres-XL binaries. The resource agent uses gtm_ctl and pgxc_monitor.
       </longdesc>
       <shortdesc lang="en">Path to the Postgres-XL binaries</shortdesc>
       <content type="string" default="$OCF_RESKEY_bindir_default" />
     </parameter>
-    <parameter name="datadir" unique="0" required="1">
+    <parameter name="datadir" required="true">
       <longdesc lang="en">
 Path to the GTM data directory.
       </longdesc>
       <shortdesc lang="en">Path to the GTM data directory</shortdesc>
       <content type="string" />
     </parameter>
-    <parameter name="host" unique="0" required="0">
+    <parameter name="host">
       <longdesc lang="en">
 Host IP address or unix socket directory the instance is listening on.
       </longdesc>
       <shortdesc lang="en">Instance IP or unix socket directory</shortdesc>
       <content type="string" default="$OCF_RESKEY_host_default" />
     </parameter>
-    <parameter name="pgport" unique="0" required="0">
+    <parameter name="port">
       <longdesc lang="en">
 Port the instance is listening on.
       </longdesc>
@@ -91,8 +91,8 @@ Port the instance is listening on.
 EOF
 }
 
-gtm_start() {
-    if gtm_monitor; then
+ocf_start() {
+    if ocf_monitor; then
         ocf_log info 'GTM is already running'
         return $OCF_SUCCESS
     fi
@@ -107,8 +107,8 @@ gtm_start() {
     fi
 }
 
-gtm_stop() {
-    if ! gtm_monitor -info; then
+ocf_stop() {
+    if ! ocf_monitor -info; then
         ocf_log info 'GTM already stopped'
         return $OCF_SUCCESS
     fi
@@ -122,7 +122,7 @@ gtm_stop() {
     fi
 }
 
-gtm_monitor() {
+ocf_monitor() {
     local loglevel=$1
 
     runasowner $loglevel "$pgxc_monitor -Z gtm -h $OCF_RESKEY_host -p $OCF_RESKEY_port"
@@ -139,15 +139,15 @@ case $__OCF_ACTION in
         exit $OCF_SUCCESS
         ;;
     start)
-        gtm_start
+        ocf_start
         exit $?
         ;;
     stop)
-        gtm_stop
+        ocf_stop
         exit $?
         ;;
     monitor)
-        gtm_monitor
+        ocf_monitor
         exit $?
         ;;
 esac
