@@ -1,0 +1,156 @@
+#!/bin/sh
+#
+#   Resource Agent for managing Postgres-XL coordinator resources.
+#
+#   License: PostgreSQL License.
+#   (c) 2017 Bitnine Global, Inc.
+
+: ${OCF_FUNCTIONS_DIR=$OCF_ROOT/lib/heartbeat}
+. $OCF_FUNCTIONS_DIR/ocf-shellfuncs
+
+OCF_RESKEY_user_default=postgres
+OCF_RESKEY_bindir_default=/usr/local/pgsql/bin
+OCF_RESKEY_host_default=$(hostname)
+OCF_RESKEY_port_default=5432
+
+: ${OCF_RESKEY_user=$OCF_RESKEY_user_default}
+: ${OCF_RESKEY_bindir=$OCF_RESKEY_bindir_default}
+: ${OCF_RESKEY_host=$OCF_RESKEY_host_default}
+: ${OCF_RESKEY_port=$OCF_RESKEY_port_default}
+
+# `pgxc_monitor -Z node ...` runs `psql` without knowing the path of it.
+export PATH=$OCF_RESKEY_bindir:$PATH
+
+pg_ctl=$OCF_RESKEY_bindir/pg_ctl
+pgxc_monitor=$OCF_RESKEY_bindir/pgxc_monitor
+
+runasowner() {
+    local loglevel=''
+
+    case $1 in
+        -info|-warn)
+            loglevel=$1
+        shift
+        ;;
+    esac
+
+    ocf_run $loglevel su $OCF_RESKEY_user -c "cd $OCF_RESKEY_datadir; $*"
+}
+
+meta_data() {
+    cat <<EOF
+<?xml version="1.0"?>
+<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+<resource-agent name="postgres-xl-coord">
+  <version>1.0</version>
+  <longdesc lang="en">
+Resource agent for a coordinator in a Postgres-XL cluster. It manages a coordinator as an HA resource.
+  </longdesc>
+  <shortdesc lang="en">Resource agent for a coordinator in a Postgres-XL cluster</shortdesc>
+  <parameters>
+    <parameter name="user">
+      <longdesc lang="en">
+The user who starts coordinator.
+      </longdesc>
+      <shortdesc lang="en">The user who starts coordinator</shortdesc>
+      <content type="string" default="$OCF_RESKEY_user_default" />
+    </parameter>
+    <parameter name="bindir">
+      <longdesc lang="en">
+Path to the directory storing the Postgres-XL binaries. The resource agent uses pg_ctl and pgxc_monitor.
+      </longdesc>
+      <shortdesc lang="en">Path to the Postgres-XL binaries</shortdesc>
+      <content type="string" default="$OCF_RESKEY_bindir_default" />
+    </parameter>
+    <parameter name="datadir" required="true">
+      <longdesc lang="en">
+Path to the coordinator data directory.
+      </longdesc>
+      <shortdesc lang="en">Path to the coordinator data directory</shortdesc>
+      <content type="string" />
+    </parameter>
+    <parameter name="host">
+      <longdesc lang="en">
+Host IP address or unix socket directory the instance is listening on.
+      </longdesc>
+      <shortdesc lang="en">Instance IP or unix socket directory</shortdesc>
+      <content type="string" default="$OCF_RESKEY_host_default" />
+    </parameter>
+    <parameter name="port">
+      <longdesc lang="en">
+Port the instance is listening on.
+      </longdesc>
+      <shortdesc lang="en">Instance port</shortdesc>
+      <content type="integer" default="$OCF_RESKEY_port_default" />
+    </parameter>
+  </parameters>
+  <actions>
+    <action name="start" timeout="10" />
+    <action name="stop" timeout="60" />
+    <action name="monitor" timeout="10" interval="10" depth="0" />
+    <action name="meta-data" timeout="5" />
+  </actions>
+</resource-agent>
+EOF
+}
+
+ocf_start() {
+    if ocf_monitor; then
+        ocf_log info 'Coordinator is already running'
+        return $OCF_SUCCESS
+    fi
+
+    runasowner "$pg_ctl start -w -Z coordinator -D $OCF_RESKEY_datadir -l coord.logfile"
+    if [ $? -eq 0 ]; then
+        ocf_log info "Coordinator is started"
+        return $OCF_SUCCESS
+    else
+        ocf_exit_reason "Can't start coordinator"
+        return $OCF_ERR_GENERIC
+    fi
+}
+
+ocf_stop() {
+    if ! ocf_monitor -info; then
+        ocf_log info 'Coordinator already stopped'
+        return $OCF_SUCCESS
+    fi
+
+    runasowner "$pg_ctl stop -w -Z coordinator -D $OCF_RESKEY_datadir"
+    if [ $? -eq 0 ]; then
+        return $OCF_SUCCESS
+    else
+        ocf_exit_reason "Coordinator failed to stop"
+        return $OCF_ERR_GENERIC
+    fi
+}
+
+ocf_monitor() {
+    local loglevel=$1
+
+    runasowner $loglevel "$pgxc_monitor -Z node -h $OCF_RESKEY_host -p $OCF_RESKEY_port"
+    if [ $? -eq 0 ]; then
+        return $OCF_SUCCESS
+    else
+        return $OCF_NOT_RUNNING
+    fi
+}
+
+case $__OCF_ACTION in
+    meta-data)
+        meta_data
+        exit $OCF_SUCCESS
+        ;;
+    start)
+        ocf_start
+        exit $?
+        ;;
+    stop)
+        ocf_stop
+        exit $?
+        ;;
+    monitor)
+        ocf_monitor
+        exit $?
+        ;;
+esac
