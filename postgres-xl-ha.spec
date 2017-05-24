@@ -26,11 +26,13 @@ respectively in a Postgres-XL cluster over Pacemaker.
 %install
 mkdir -p $RPM_BUILD_ROOT/usr/lib/ocf/resource.d/bitnine
 cp -p postgres-xl-coord $RPM_BUILD_ROOT/usr/lib/ocf/resource.d/bitnine
+cp -p postgres-xl-data $RPM_BUILD_ROOT/usr/lib/ocf/resource.d/bitnine
 cp -p postgres-xl-gtm $RPM_BUILD_ROOT/usr/lib/ocf/resource.d/bitnine
 
 
 %files
 /usr/lib/ocf/resource.d/bitnine/postgres-xl-coord
+/usr/lib/ocf/resource.d/bitnine/postgres-xl-data
 /usr/lib/ocf/resource.d/bitnine/postgres-xl-gtm
 
 
