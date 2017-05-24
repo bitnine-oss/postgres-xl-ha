@@ -99,7 +99,7 @@ ocf_start() {
 
     runasowner "$gtm_ctl start -Z gtm -w -D $OCF_RESKEY_datadir -l gtm.logfile -p $OCF_RESKEY_bindir"
     if [ $? -eq 0 ]; then
-        ocf_log info "GTM is started"
+        ocf_log info 'GTM is started'
         return $OCF_SUCCESS
     else
         ocf_exit_reason "Can't start GTM"
@@ -117,13 +117,18 @@ ocf_stop() {
     if [ $? -eq 0 ]; then
         return $OCF_SUCCESS
     else
-        ocf_exit_reason "GTM failed to stop"
+        ocf_exit_reason 'GTM failed to stop'
         return $OCF_ERR_GENERIC
     fi
 }
 
 ocf_monitor() {
     local loglevel=$1
+
+    if ! runasowner "test -w $OCF_RESKEY_datadir"; then
+        ocf_log info "$OCF_RESKEY_datadir does not exist"
+        return $OCF_NOT_RUNNING
+    fi
 
     runasowner $loglevel "$pgxc_monitor -Z gtm -h $OCF_RESKEY_host -p $OCF_RESKEY_port"
     if [ $? -eq 0 ]; then
