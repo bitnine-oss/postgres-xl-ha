@@ -4,7 +4,7 @@
 
 Postgres-XL High Availability (HA) provides resource agents for GTM, coordinator, and datanode to manage them through Pacemaker. Postgres-XL administrators may use Postgres-XL HA to configure automatic failover in order to minimize downtime.
 
-This documentation explains how to install and configure Postgres-XL and Postgres-XL HA on an example cluster. The cluster has 5 nodes; 1 node (*t1*) for a GTM, 1 node (*t2*) for a coordinator, and 2 nodes (*t3*, *t4*) for datanodes.
+This documentation explains how to install and configure Postgres-XL and Postgres-XL HA on an example cluster. The cluster has 4 nodes; 1 node (*t1*) for a GTM, 1 node (*t2*) for a coordinator, and 2 nodes (*t3*, *t4*) for datanodes.
 
 ## Installation
 
